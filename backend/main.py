@@ -28,9 +28,6 @@ def get_drug(name: str):
 
     return data
 
-# TODO: prescription drugs like warfarin use different OpenFDA fields
-# need to add fallback to fetch from warnings_and_cautions if purpose and active_ingredients come back Unknown
-
 def fetch_drug_data(drug_name: str):
     url = f"https://api.fda.gov/drug/label.json?search=openfda.generic_name:{drug_name}&limit=1"
 
@@ -46,11 +43,18 @@ def fetch_drug_data(drug_name: str):
     
     result = data["results"][0]
 
+    purpose = result.get("purpose") or result.get("indications_and_usage") or ["Unknown"]
+
+    active_ingredients = result.get("active_ingredient") or result.get("spl_product_data_elements") or ["Unknown"]
+
+    warnings = result.get("warnings") or result.get("warnings_and_cautions") or ["None available"]
+
     return {
         "name": drug_name,
-        "purpose": result.get("purpose", ["Unknown"])[0],
-        "active_ingredients": result.get("active_ingredient", ["Unknown"])[0],
-        "warnings": result.get("warnings", ["None available"])[0],
+        "purpose": purpose[0],
+        "active_ingredients": active_ingredients[0],
+        "warnings": warnings[0],
+        "boxed_warning": warnings[0],
         "boxed_warning": result.get("boxed_warning", [None])[0],
         "side_effects": result.get("adverse_reactions", ["None listed"])[0]
     }
