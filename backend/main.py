@@ -55,6 +55,7 @@ def fetch_drug_data(drug_name: str):
         "side_effects": result.get("adverse_reactions", ["None listed"])[0]
     }
 
+
 def analyze_interactions(drug_data: list):
     bleeding_keywords = [
         "bleeding", "blood thinning", "anticoagulant", "hemorrhage",
@@ -96,30 +97,51 @@ def analyze_interactions(drug_data: list):
         flags.append("cardiovascular risk detected")
     if organ_hits:
         flags.append("liver or kidney stress detected")
+
+    def extract_key_warning(text: str, keywords: list):
+        sentences = text.split(".")
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+
+            if any(kw in sentence.lower() for kw in keywords):
+                if 20 < len(sentence) > 300:
+                    return sentence + "."
+        
+        return None
+    
+    key_warnings = []
+    for drug in drug_data:
+        full_text = (drug["warnings"] or "") + " " + (drug["boxed_warning"] or "")
+
+        warning = extract_key_warning(full_text, 
+            bleeding_keywords + heart_keywords + organ_keywords + danger_keywords)
+        
+        if warning:
+            key_warnings.append(f"{drug['name'].capitalize()}: {warning}")
     
     if danger_hits or (bleeding_hits and heart_hits):
         severity = "danger"
         summary = (
-            f"Taking {' and '.join([d['name'] for d in drug_data])} together carries "
-            f"a serious risk. Both medications affect bleeding and cardiovascular function. "
-            f"This combination may cause life threatening complications. "
-            f"Do not combine these without direct supervision from your doctor."
+            f"Taking {' and '.join([d['name'] for d in drug_data])} together is considered high risk. "
+            f"{' '.join(key_warnings[:2]) if key_warnings else ''} "
+            f"Do not combine these medications without direct supervision from your doctor."
         )
-    
+        
     elif bleeding_hits or heart_hits or organ_hits:
         severity = "caution"
         summary = (
-            f"Taking {' and '.join([d['name'] for d in drug_data])} together requires caution. "
-            f"There are overlapping risk factors between these medications. "
-            f"Consult your doctor or phamacist before combining them."
+            f"Use caution when taking {' and '.join([d['name'] for d in drug_data])} together. "
+            f"{key_warnings[0] if  key_warnings else ''}"
+            f"Consult your doctor or pharmacist before combining these medications."
         )
     
     else:
         severity = "safe"
         summary = (
             f"No major interactions detected between "
-            f"{' and '.join([d['name'] for d in drug_data])}. "
-            f"Always consult your healthcare provider if you have concerns"
+            f"{' and '.join(d['name'] for d in drug_data)}. "
+            f"Always consult your healthcare provider if you have any concerns."
         )
     
     return {
