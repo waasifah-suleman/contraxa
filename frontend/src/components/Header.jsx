@@ -2,7 +2,7 @@ function Header() {
     return (
         <header className="header">
             <div className="header-left">
-                <span  className="logo">O</span>
+                <span  className="logo">C</span>
                 <h1 className="brand">Contraxa</h1>
             </div>
             <div className="toggle">
