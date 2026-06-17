@@ -6,8 +6,8 @@ function Header() {
                 <h1 className="brand">Contraxa</h1>
             </div>
             <div className="toggle">
-                <button className="toggle-btn active">People</button>
-                <button className="toggle-btn">Pets</button>
+                <button className="toggle-btn active">👤 People</button>
+                <button className="toggle-btn">🐾 Pets</button>
             </div>
         </header>
     );

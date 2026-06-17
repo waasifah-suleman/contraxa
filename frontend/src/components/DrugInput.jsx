@@ -13,7 +13,8 @@ function DrugInput({ drugs, setDrugs, onCheck, loading }) {
 
     return (
         <section className="input-section">
-            <p className="input-label">Enter medications to check</p>
+            <p className="input-subtitle">Checking interactions for human medications</p>
+            <p className="input-label">ENTER MEDICATIONS TO CHECK</p>
 
             <div className="inputs">
                 {drugs.map((drug, index) => (
@@ -28,17 +29,18 @@ function DrugInput({ drugs, setDrugs, onCheck, loading }) {
                 ))}
             </div>
 
-            {drugs.length < 5 && (
-                <button className="add-btn" onClick={addDrug}>+</button>
-            )}
+            <div className="action-row">
+                {drugs.length < 5 && (
+                    <button className="add-btn" onClick={addDrug}>+</button>
+                )}
 
-            <button 
-            className="check-btn" 
-            onClick={onCheck} 
-            disabled={loading}
-            >
-                {loading ? "Analyzing...": "Check Interactions"}
-            </button>
+                <button 
+                className="check-btn"
+                onClick={onCheck}
+                disabled={loading}
+                >🔬 {loading ? "Analyzing..." : "Check Interactions"}</button>
+            </div>
+
         </section>
     );
 }

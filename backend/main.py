@@ -28,6 +28,38 @@ def get_drug(name: str):
 
     return data
 
+def clean_ingredient_text(text: str):
+    prefixes_to_remove = [
+        "active ingredient", "active ingredients", "in each", "tablet", "purpose", ":"
+    ]
+
+    cleaned = text
+    for prefix in prefixes_to_remove:
+        cleaned = cleaned.lower().replace(prefix.lower(), "")
+    
+    return cleaned.strip().capitalize()
+
+def extract_side_effects(text: str):
+    if not text or text == "None listed":
+        return []
+    
+    skip_phrases = ["see ", "report", "contact", "discussed in", "adverse reactions"]
+
+    import re
+
+    candidates = re.split(r'[,.:]', text)
+
+    side_effects = []
+
+    for candidate in candidates:
+        candidate = candidate.strip()
+
+        if 4 < len(candidate) < 60 and not any(skip in candidate.lower() for skip in skip_phrases):
+            if not re.search(r'\(\s*\d', candidate):
+                side_effects.append(candidate.capitalize())
+    
+    return side_effects[:7]
+
 def fetch_drug_data(drug_name: str):
     url = f"https://api.fda.gov/drug/label.json?search=openfda.generic_name:{drug_name}&limit=1"
 
@@ -45,20 +77,21 @@ def fetch_drug_data(drug_name: str):
 
     purpose = result.get("purpose") or result.get("indications_and_usage") or ["Unknown"]
 
-    active_ingredients = result.get("active_ingredient") or result.get("spl_product_data_elements") or ["Unknown"]
+    active_ingredients = result.get("active_ingredient")
+    if not active_ingredients:
+        openfda_data = result.get("openfda", {})
+        active_ingredients = openfda_data.get("generic_name") or openfda_data.get("substance_name") or ["Unknown"]
 
     warnings = result.get("warnings") or result.get("warnings_and_cautions") or ["None available"]
 
     return {
         "name": drug_name,
         "purpose": purpose[0],
-        "active_ingredients": active_ingredients[0],
+        "active_ingredients": clean_ingredient_text(active_ingredients[0]),
         "warnings": warnings[0],
-        "boxed_warning": warnings[0],
         "boxed_warning": result.get("boxed_warning", [None])[0],
-        "side_effects": result.get("adverse_reactions", ["None listed"])[0]
+        "side_effects": extract_side_effects(result.get("adverse_reactions", ["None listed"])[0])
     }
-
 
 def analyze_interactions(drug_data: list):
     bleeding_keywords = [
@@ -109,7 +142,7 @@ def analyze_interactions(drug_data: list):
             sentence = sentence.strip()
 
             if any(kw in sentence.lower() for kw in keywords):
-                if 20 < len(sentence) > 300:
+                if 20 < len(sentence) < 300:
                     return sentence + "."
         
         return None
