@@ -96,7 +96,7 @@ def fetch_drug_data(drug_name: str):
 def analyze_interactions(drug_data: list):
     bleeding_keywords = [
         "bleeding", "blood thinning", "anticoagulant", "hemorrhage",
-        "blood thinner", "warfarin", "aspirin", "nsaid", "bruising"
+        "blood thinner", "nsaid", "bruising" # removed warfarin and aspirin
     ]
 
     heart_keywords = [
@@ -113,28 +113,47 @@ def analyze_interactions(drug_data: list):
         "do not use", "contraindicated", "boxed warning", "black box"
     ]
 
-    flags = []
+    all_keyword_categories = bleeding_keywords + heart_keywords + organ_keywords + danger_keywords
 
-    all_warnings_text = ""
+    keyword_to_drugs = {}
 
     for drug in drug_data:
-        if drug["warnings"]:
-            all_warnings_text += drug["warnings"].lower() + " "
-        if drug["boxed_warning"]:
-            all_warnings_text += drug["boxed_warning"].lower() + " "
+        drug_text = drug["warnings"].lower() + (
+            drug["boxed_warning"].lower() if drug["boxed_warning"] is not None else ""
+        )
+
+        for keyword in all_keyword_categories:
+            if keyword in drug_text and keyword != drug["name"].lower():
+                if keyword in keyword_to_drugs:
+                    keyword_to_drugs[keyword].append(drug["name"])
+                else:
+                    keyword_to_drugs[keyword] = [drug["name"]]
     
-    bleeding_hits = [kw for kw in bleeding_keywords if kw in all_warnings_text]
-    heart_hits = [kw for kw in heart_keywords if kw in all_warnings_text]
-    organ_hits = [kw for kw in organ_keywords if kw in all_warnings_text]
-    danger_hits = [kw for kw in danger_keywords if kw in all_warnings_text]
+    overlap_bleeding = []
+    overlap_heart = []
+    overlap_organ = []
+    overlap_danger = []
 
-    if bleeding_hits:
+    for key, value in keyword_to_drugs.items():
+        if len(value) >= 2:
+            if key in bleeding_keywords:
+                overlap_bleeding.append(key)
+            if key in heart_keywords:
+                overlap_heart.append(key)
+            if key in organ_keywords:
+                overlap_organ.append(key)
+            if key in danger_keywords:
+                overlap_danger.append(key)
+    
+    flags = []
+
+    if overlap_bleeding:
         flags.append("bleeding risk detected")
-    if heart_hits:
+    if overlap_heart:
         flags.append("cardiovascular risk detected")
-    if organ_hits:
+    if overlap_organ:
         flags.append("liver or kidney stress detected")
-
+    
     def extract_key_warning(text: str, keywords: list):
         sentences = text.split(".")
 
@@ -148,36 +167,38 @@ def analyze_interactions(drug_data: list):
         return None
     
     key_warnings = []
+
     for drug in drug_data:
         full_text = (drug["warnings"] or "") + " " + (drug["boxed_warning"] or "")
+        warning = extract_key_warning(
+            full_text,
+            bleeding_keywords + heart_keywords + organ_keywords + danger_keywords
+        )
 
-        warning = extract_key_warning(full_text, 
-            bleeding_keywords + heart_keywords + organ_keywords + danger_keywords)
-        
         if warning:
             key_warnings.append(f"{drug['name'].capitalize()}: {warning}")
     
-    if danger_hits or (bleeding_hits and heart_hits):
+    if overlap_danger or (overlap_bleeding and overlap_heart):
         severity = "danger"
         summary = (
-            f"Taking {' and '.join([d['name'] for d in drug_data])} together is considered high risk. "
-            f"{' '.join(key_warnings[:2]) if key_warnings else ''} "
+            f"Taking {' and '.join([d['name'] for d in drug_data])} together is considered high risk.\n\n"
+            f"{(chr(10)+chr(10)).join(key_warnings[:2]) if key_warnings else ''}\n\n"
             f"Do not combine these medications without direct supervision from your doctor."
         )
-        
-    elif bleeding_hits or heart_hits or organ_hits:
+    
+    elif overlap_bleeding or overlap_heart or overlap_organ:
         severity = "caution"
         summary = (
-            f"Use caution when taking {' and '.join([d['name'] for d in drug_data])} together. "
-            f"{key_warnings[0] if  key_warnings else ''}"
-            f"Consult your doctor or pharmacist before combining these medications."
+            f"Use caution when taking {' and '.join([d['name'] for d in drug_data])} together.\n\n"
+            f"{key_warnings[0] if key_warnings else ''}\n\n"
+            f"Consult your doctor or phamacist before combining these medications."
         )
     
     else:
         severity = "safe"
         summary = (
             f"No major interactions detected between "
-            f"{' and '.join(d['name'] for d in drug_data)}. "
+            f"{' and '.join([d['name'] for d in drug_data])}.\n\n"
             f"Always consult your healthcare provider if you have any concerns."
         )
     

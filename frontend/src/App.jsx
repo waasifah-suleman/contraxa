@@ -32,6 +32,7 @@ function App() {
             if (data.error) {
                 setError(data.error);
             } else {
+                console.log(data)
                 setResult(data);
             }
         } catch (err) {

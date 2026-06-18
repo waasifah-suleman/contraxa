@@ -42,7 +42,9 @@ function ResultCard({ result }) {
 
       <div className="card-section">
         <p className="section-label">Interaction</p>
-        <p className="section-text">{displayedSummary}</p>
+        {displayedSummary.split('\n\n').map((line, i) => (
+          <p key={i} className="section-text">{line}</p>
+        ))}
       </div>
 
       <div className="card-section">

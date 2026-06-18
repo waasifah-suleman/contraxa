@@ -216,6 +216,13 @@
     padding-right: 100px;
 }
 
+.section-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #F0F0F0;
+    margin-bottom: 12px;
+}
+
 .card-section:last-of-type {
     border-bottom: none;
 }
